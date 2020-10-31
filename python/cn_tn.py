@@ -1,5 +1,6 @@
+#!/usr/bin/env python3
 # coding=utf-8
-# Authors: 
+# Authors:
 #   2019.5 Zhiyang Zhou (https://github.com/Joee1995/chn_text_norm.git)
 #   2019.9 Jiayu DU
 #
@@ -48,7 +49,8 @@ COM_QUANTIFIERS = '(匹|张|座|回|场|尾|条|个|首|阙|阵|网|炮|顶|丘|
 # punctuation information are based on Zhon project (https://github.com/tsroten/zhon.git)
 CHINESE_PUNC_STOP = '！？｡。'
 CHINESE_PUNC_NON_STOP = '＂＃＄％＆＇（）＊＋，－／：；＜＝＞＠［＼］＾＿｀｛｜｝～｟｠｢｣､、〃《》「」『』【】〔〕〖〗〘〙〚〛〜〝〞〟〰〾〿–—‘’‛“”„‟…‧﹏'
-CHINESE_PUNC_LIST = CHINESE_PUNC_STOP + CHINESE_PUNC_NON_STOP
+CHINESE_PUNC_OTHER = '·〈〉-'
+CHINESE_PUNC_LIST = CHINESE_PUNC_STOP + CHINESE_PUNC_NON_STOP + CHINESE_PUNC_OTHER
 
 # ================================================================================ #
 #                                    basic class
@@ -600,11 +602,11 @@ class Percentage:
 # ================================================================================ #
 #                            NSW Normalizer
 # ================================================================================ #
-class NSWNormalizer:                                                                                                                                                        
-    def __init__(self, raw_text):                                   
-        self.raw_text = '^' + raw_text + '$'                                        
-        self.norm_text = ''                                                  
-                                                                                    
+class NSWNormalizer:
+    def __init__(self, raw_text):
+        self.raw_text = '^' + raw_text + '$'
+        self.norm_text = ''
+
     def _particular(self):
         text = self.norm_text
         pattern = re.compile(r"(([a-zA-Z]+)二([a-zA-Z]+))")
@@ -735,7 +737,7 @@ if __name__ == '__main__':
     p.add_argument('--to_upper', action='store_true', help='convert to upper case')
     p.add_argument('--to_lower', action='store_true', help='convert to lower case')
     p.add_argument('--has_key', action='store_true', help="input text has Kaldi's key as first field.")
-    p.add_argument('--log_interval', type=int, default=10000, help='log interval in number of processed lines')
+    p.add_argument('--log_interval', type=int, default=100000, help='log interval in number of processed lines')
     args = p.parse_args()
 
     ifile = codecs.open(args.ifile, 'r', 'utf8')
@@ -749,15 +751,15 @@ if __name__ == '__main__':
             cols = l.split(maxsplit=1)
             key = cols[0]
             if len(cols) == 2:
-                text = cols[1]
+                text = cols[1].strip()
             else:
                 text = ''
         else:
-            text = l
+            text = l.strip()
 
         # cases
         if args.to_upper and args.to_lower:
-            sys.stderr.write('text norm: to_upper OR to_lower?')
+            sys.stderr.write('cn_tn.py: to_upper OR to_lower?')
             exit(1)
         if args.to_upper:
             text = text.upper()
@@ -773,17 +775,20 @@ if __name__ == '__main__':
         del_chars = ''
         text = text.translate(str.maketrans(old_chars, new_chars, del_chars))
 
-        # 
+        #
         if args.has_key:
-            ofile.write(key + '\t' + text)
+            ofile.write(key + '\t' + text + '\n')
         else:
-            ofile.write(text)
-        
+            if text.strip() != '': # skip empty line in pure text format(without Kaldi's utt key)
+                ofile.write(text + '\n')
+
         n += 1
         if n % args.log_interval == 0:
-            sys.stderr.write("text norm: {} lines done.\n".format(n))
-    
-    sys.stderr.write("text norm: {} lines done in total.\n".format(n))
-    
+            sys.stderr.write("cn_tn.py: {} lines done.\n".format(n))
+            sys.stderr.flush()
+
+    sys.stderr.write("cn_tn.py: {} lines done in total.\n".format(n))
+    sys.stderr.flush()
+
     ifile.close()
     ofile.close()
